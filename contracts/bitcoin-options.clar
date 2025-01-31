@@ -121,3 +121,37 @@
         (var-set price-validity-window new-window)
         (ok true))
 )
+
+;; Private Helper Functions
+
+(define-private (is-contract-owner)
+    (is-eq tx-sender CONTRACT_OWNER)
+)
+
+(define-private (check-expiry (option-id uint))
+    (let (
+        (option (unwrap! (map-get? options option-id) ERR_OPTION_NOT_FOUND))
+        (current-height block-height)
+    )
+    (if (> current-height (get expiry option))
+        ERR_OPTION_EXPIRED
+        (ok true)
+    ))
+)
+
+(define-private (update-user-balance (user principal) (delta uint) (is-subtract bool))
+    (let (
+        (current-balance (default-to {sbtc-balance: u0, locked-collateral: u0} 
+                        (map-get? user-balances user)))
+        (current-sbtc (get sbtc-balance current-balance))
+        (new-balance (if is-subtract
+                        (begin
+                            (asserts! (>= current-sbtc delta) ERR_INSUFFICIENT_BALANCE)
+                            (- current-sbtc delta))
+                        (+ current-sbtc delta)))
+    )
+    (ok (map-set user-balances 
+        user 
+        (merge current-balance {sbtc-balance: new-balance})))
+    )
+)
