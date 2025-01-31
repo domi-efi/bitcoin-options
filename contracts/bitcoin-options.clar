@@ -82,3 +82,42 @@
         locked-collateral: uint
     }
 )
+
+;; Oracle Functions
+
+(define-public (update-btc-price (new-price uint))
+    (begin
+        (asserts! (is-eq tx-sender (var-get oracle-address)) ERR_NOT_AUTHORIZED)
+        (asserts! (> new-price u0) ERR_INVALID_PRICE)
+        (var-set btc-price new-price)
+        (var-set price-last-updated block-height)
+        (ok true))
+)
+
+(define-read-only (get-current-btc-price)
+    (let (
+        (price (var-get btc-price))
+        (last-updated (var-get price-last-updated))
+        (validity-window (var-get price-validity-window))
+    )
+    (asserts! (> price u0) ERR_INVALID_PRICE)
+    (asserts! (< (- block-height last-updated) validity-window) ERR_STALE_PRICE)
+    (ok price))
+)
+
+(define-public (set-oracle-address (new-oracle principal))
+    (begin
+        (asserts! (is-contract-owner) ERR_NOT_AUTHORIZED)
+        (asserts! (not (is-eq new-oracle 'SP000000000000000000002Q6VF78)) ERR_INVALID_PARAMETER)
+        (var-set oracle-address new-oracle)
+        (ok true))
+)
+
+(define-public (set-price-validity-window (new-window uint))
+    (begin
+        (asserts! (is-contract-owner) ERR_NOT_AUTHORIZED)
+        (asserts! (and (>= new-window MIN_VALIDITY_WINDOW) 
+                      (<= new-window MAX_VALIDITY_WINDOW)) ERR_INVALID_PARAMETER)
+        (var-set price-validity-window new-window)
+        (ok true))
+)
