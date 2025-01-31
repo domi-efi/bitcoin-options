@@ -209,3 +209,34 @@
     (var-set next-option-id (+ option-id u1))
     (ok option-id))
 )
+
+(define-public (exercise-option (option-id uint))
+    (let (
+        (option (unwrap! (map-get? options option-id) ERR_OPTION_NOT_FOUND))
+        (current-price (unwrap! (get-current-btc-price) ERR_INVALID_PRICE))
+    )
+    (asserts! (is-eq (get holder option) tx-sender) ERR_NOT_AUTHORIZED)
+    (try! (check-expiry option-id))
+    (asserts! (is-eq (get status option) "ACTIVE") ERR_OPTION_NOT_EXERCISABLE)
+    
+    (if (is-eq (get option-type option) "CALL")
+        (if (> current-price (get strike-price option))
+            (let (
+                (profit (- current-price (get strike-price option)))
+            )
+            (try! (update-user-balance tx-sender profit false))
+            (map-set options option-id 
+                (merge option {status: "EXERCISED"}))
+            (ok true))
+            ERR_OPTION_NOT_EXERCISABLE)
+        (if (< current-price (get strike-price option))
+            (let (
+                (profit (- (get strike-price option) current-price))
+            )
+            (try! (update-user-balance tx-sender profit false))
+            (map-set options option-id 
+                (merge option {status: "EXERCISED"}))
+            (ok true))
+            ERR_OPTION_NOT_EXERCISABLE))
+    )
+)
