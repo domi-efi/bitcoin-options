@@ -240,3 +240,51 @@
             ERR_OPTION_NOT_EXERCISABLE))
     )
 )
+
+(define-public (expire-option (option-id uint))
+    (let (
+        (option (unwrap! (map-get? options option-id) ERR_OPTION_NOT_FOUND))
+    )
+    (asserts! (> block-height (get expiry option)) ERR_OPTION_NOT_EXPIRED)
+    (asserts! (is-eq (get status option) "ACTIVE") ERR_OPTION_NOT_EXERCISABLE)
+    
+    (try! (update-user-balance (get creator option) (get collateral option) false))
+    
+    (map-set options option-id 
+        (merge option {status: "EXPIRED"}))
+    (ok true))
+)
+
+;; Read-Only Functions
+
+(define-read-only (get-option (option-id uint))
+    (map-get? options option-id)
+)
+
+(define-read-only (get-user-balance (user principal))
+    (default-to {sbtc-balance: u0, locked-collateral: u0} 
+        (map-get? user-balances user))
+)
+
+(define-read-only (get-platform-fee)
+    (var-get platform-fee)
+)
+
+;; Administrative Functions
+
+(define-public (set-platform-fee (new-fee uint))
+    (begin
+        (asserts! (is-contract-owner) ERR_NOT_AUTHORIZED)
+        (asserts! (<= new-fee MAX_FEE_BASIS_POINTS) ERR_INVALID_PARAMETER)
+        (var-set platform-fee new-fee)
+        (ok true))
+)
+
+(define-public (set-min-collateral-ratio (new-ratio uint))
+    (begin
+        (asserts! (is-contract-owner) ERR_NOT_AUTHORIZED)
+        (asserts! (and (>= new-ratio u100)
+                      (<= new-ratio MAX_COLLATERAL_RATIO)) ERR_INVALID_PARAMETER)
+        (var-set min-collateral-ratio new-ratio)
+        (ok true))
+)
