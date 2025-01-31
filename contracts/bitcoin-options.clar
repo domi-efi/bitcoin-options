@@ -43,3 +43,42 @@
 (define-constant ERR_INVALID_PRICE (err u110))
 (define-constant ERR_OPTION_NOT_EXPIRED (err u111))
 (define-constant ERR_INVALID_PARAMETER (err u112))
+
+;; Data Variables
+
+;; Protocol Configuration
+(define-data-var min-collateral-ratio uint u150)  ;; 150% collateral ratio
+(define-data-var platform-fee uint u10)           ;; 0.1% fee (basis points)
+(define-data-var next-option-id uint u0)
+
+;; Oracle Configuration
+(define-data-var oracle-address principal CONTRACT_OWNER)
+(define-data-var btc-price uint u0)
+(define-data-var price-last-updated uint u0)
+(define-data-var price-validity-window uint u150)  ;; ~25 minutes in blocks
+
+;; Data Maps
+
+;; Options Registry
+(define-map options
+    uint  ;; option-id
+    {
+        creator: principal,
+        holder: principal,
+        option-type: (string-ascii 4),  ;; "CALL" or "PUT"
+        strike-price: uint,
+        expiry: uint,
+        amount: uint,
+        collateral: uint,
+        status: (string-ascii 10)  ;; "ACTIVE", "EXERCISED", "EXPIRED"
+    }
+)
+
+;; User Balance Tracking
+(define-map user-balances
+    principal
+    {
+        sbtc-balance: uint,
+        locked-collateral: uint
+    }
+)
